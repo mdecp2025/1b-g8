@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brython 機器人程式編輯器 - RobotPlatform</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg-color: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-main: #1f2937;
+            --text-sub: #6b7280;
+            --border-color: #e5e7eb;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        header {
+            background-color: var(--card-bg);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 0.8rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+            z-index: 10;
+        }
+
+        .brand {
+            font-weight: bold;
+            font-size: 1.2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--text-sub);
+            margin-left: 1.5rem;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+        .nav-links a:hover { color: var(--primary-color); }
+
+        .main-wrapper {
+            flex: 1;
+            padding: 1.5rem;
+            display: flex;
+            gap: 1.5rem;
+            overflow: hidden;
+        }
+
+        @media (max-width: 900px) {
+            .main-wrapper { flex-direction: column; overflow-y: auto; }
+        }
+
+        .panel {
+            flex: 1;
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        .panel-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f9fafb;
+        }
+
+        .panel-header h3 { margin: 0; font-size: 1rem; color: var(--text-main); }
+
+        .panel-body {
+            flex: 1;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #kw_editor1 { flex: 1; width: 100%; border: none !important; }
+        #brython_div1 { 
+            flex: 2; 
+            border: none; 
+            background: #fff; 
+            position: relative; 
+            display: flex; justify-content: center; align-items: center;
+        }
+
+        #kw_console1 {
+            height: 120px;
+            border-top: 1px solid var(--border-color);
+            padding: 10px;
+            background: #1e1e1e;
+            color: #00ff00;
+            font-family: 'Consolas', monospace;
+            resize: none;
+            width: 100%;
+            box-sizing: border-box;
+            border-left: none; border-right: none; border-bottom: none;
+        }
+
+        .toolbar {
+            padding: 10px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        button {
+            padding: 6px 12px;
+            font-size: 0.9rem;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .btn-primary { background: var(--primary-color); color: white; }
+        .btn-primary:hover { background: var(--primary-hover); }
+
+        .btn-success { background: var(--success-color); color: white; }
+        .btn-success:hover { filter: brightness(90%); }
+
+        .btn-outline { background: white; border: 1px solid var(--border-color); color: var(--text-main); }
+        .btn-outline:hover { background: #f3f4f6; border-color: #d1d5db; }
+
+        .btn-sm { padding: 4px 8px; font-size: 0.8rem; }
+
+        input[type="text"], textarea#program_desc {
+            padding: 6px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+        input[type="text"]:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+        }
+
+        #search_panel {
+            position: absolute;
+            top: 70px;
+            right: 20px;
+            width: 450px;
+            background: white;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            border-radius: 8px;
+            z-index: 100;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+        }
+    </style>
+
+    <script src="{{ url_for('static', filename='brython.js') }}"></script>
+    <script src="{{ url_for('static', filename='brython_stdlib.js') }}"></script>
+    <script src="{{ url_for('static', filename='sylvester.js') }}"></script>
+    <script src="{{ url_for('static', filename='PrairieDraw.js') }}"></script>
+    <script src="{{ url_for('static', filename='Cango-24v03-min.js') }}"></script>
+    <script src="{{ url_for('static', filename='SVGpathUtils-6v03-min.js') }}"></script>
+    <script src="{{ url_for('static', filename='gearUtils-09.js') }}"></script>
+    <script src="{{ url_for('static', filename='CangoAxes-6v01-min.js') }}"></script>    
+    <script src="{{ url_for('static', filename='three.js') }}"></script>
+    <script src="{{ url_for('static', filename='pyweb3d.brython.js') }}"></script>    
+    <script src="{{ url_for('static', filename='jsm/loaders/GLTFLoader.js') }}"></script>  
+    <script src="{{ url_for('static', filename='jsm/controls/OrbitControls.js') }}"></script>  
+    <script src="{{ url_for('static', filename='jsm/loaders/RGBELoader.js') }}"></script>  
+    <script src="{{ url_for('static', filename='jsm/loaders/STLLoader.js') }}"></script>  
+    <script src="{{ url_for('static', filename='jsm/loaders/OBJLoader.js') }}"></script>  
+    <script src="{{ url_for('static', filename='jsm/loaders/MTLLoader.js') }}"></script>  
+    <script src="{{ url_for('static', filename='ace/ace.js') }}"></script>
+    <script src="{{ url_for('static', filename='ace/ext-language_tools.js') }}"></script>
+    <script src="{{ url_for('static', filename='ace/mode-python.js') }}"></script>
+    <script src="{{ url_for('static', filename='ace/snippets/python.js') }}"></script>
+    <script src="{{ url_for('static', filename='ace/FileSaver.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='ace/filereader.js') }}"></script>
+</head>
+<body>
+
+    <header>
+        <a href="{{ url_for('index') }}" class="brand">RobotPlatform</a>
+        
+        <div style="flex:1; display:flex; justify-content:center;">
+            <button id="search_toggle" class="btn-outline btn-sm">
+                查詢程式庫
+            </button>
+        </div>
+
+        <nav class="nav-links">
+            <span style="font-size:0.9rem; color:#6b7280; margin-right:10px;">歡迎回來</span>
+            <a href="{{ url_for('programs') }}">我的專案</a>
+            <a href="{{ url_for('logout') }}" style="color: #dc2626;">登出</a>
+        </nav>
+    </header>
+
+    <div id="search_panel" style="display:none;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
+            <h4 style="margin:0;">搜尋程式庫</h4>
+            <button type="button" id="search_close" style="background:none; border:none; color:#999; font-size:1.2rem;">&times;</button>
+        </div>
+        <form id="search_form" style="display:flex; gap:5px; margin-bottom:15px;">
+            <input type="text" id="search_query" placeholder="輸入關鍵字..." style="flex:1;">
+            <button type="submit" class="btn-primary">搜尋</button>
+        </form>
+        <div id="search_results" style="max-height:300px; overflow-y:auto;"></div>
+    </div>
+
+    <div class="main-wrapper">
+        <div class="panel">
+            <div class="panel-header">
+                <h3>程式碼編輯器</h3>
+                <div style="display:flex; gap:5px; align-items:center;">
+                    <input id="kw_filename1" value="robot" type="text" style="width:100px; padding:4px;" placeholder="檔名">
+                    <span style="font-size:0.8rem; color:#666;">.py</span>
+                </div>
+            </div>
+            
+            <div class="toolbar">
+                <button id="kw_run1" class="btn-success">執行程式</button>
+                <button id="kw_save_db" class="btn-primary">雲端存檔</button>
+                <button type="button" onclick="doSave('kw_py_src1', 'kw_filename1')" class="btn-outline">下載檔案</button>
+                <button onclick="window.location.reload()" class="btn-outline">重新載入</button>
+                
+                <div style="border-left:1px solid #ddd; height:20px; margin:0 5px;"></div>
+                
+                <span style="font-size:0.8rem; color:#666;">範例：</span>
+                <button class="btn-outline btn-sm" id="example1">Print</button>
+                <button class="btn-outline btn-sm" id="example2">移動</button>
+                <button class="btn-outline btn-sm" id="example3">隨機</button>
+            </div>
+
+            <div id="kw_editor1"></div>
+
+            <div style="padding:10px; border-top:1px solid var(--border-color); background:#f9fafb;">
+                <textarea id="program_desc" placeholder="輸入程式說明（將與程式一起儲存）..." style="width:100%; height:40px; resize:none; border:1px solid #ddd;"></textarea>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">
+                <h3>執行畫面</h3>
+                <div>
+                    <button id="clear_bd1" class="btn-outline btn-sm">清除畫布</button>
+                    <button id="kw_clear_console1" class="btn-outline btn-sm">清除輸出</button>
+                </div>
+            </div>
+            
+            <div id="brython_div1"></div>
+            <textarea id="kw_console1" readonly placeholder="程式輸出將顯示於此..."></textarea>
+        </div>
+    </div>
+
+    <script type="text/python3">
+    import sys
+    import time
+    import traceback
+    from browser import document as doc, window, html
+
+    class cOutput:
+        def __init__(self, target):
+            self.target = doc[target]
+        def write(self, data):
+            self.target.value += str(data)
+
+    class Editor:
+        def __init__(self, editor_id, console_id, container_id, storage_id):
+            self.editor_id = editor_id
+            self.console_id = console_id
+            self.container_id = container_id
+            self.storage_id = storage_id
+            try:
+                self.editor = window.ace.edit(self.editor_id)
+                session = self.editor.getSession()
+                session.setMode("ace/mode/python")
+                session.setTabSize(4)
+                session.setUseSoftTabs(True)
+                self.editor.setOptions({
+                    'enableLiveAutocompletion': True,
+                    'enableSnippets': True,
+                    'highlightActiveLine': False,
+                    'highlightSelectedWord': True,
+                    'autoScrollEditorIntoView': True,
+                    'fontSize': '14px'
+                })
+            except:
+                self.editor = html.TEXTAREA(rows=20, cols=70)
+                doc[self.editor_id] <= self.editor
+                def get_value(): return self.editor.value
+                def set_value(x): self.editor.value = x
+                self.editor.getValue = get_value
+                self.editor.setValue = set_value
+
+        def run(self):
+            sys.stdout = cOutput(self.console_id)
+            sys.stderr = cOutput(self.console_id)
+            doc[self.console_id].value = ''
+            src = self.editor.getValue()
+            if hasattr(window, 'localStorage') and self.storage_id:
+                window.localStorage[self.storage_id] = src
+            t0 = time.perf_counter()
+            try:
+                exec(src, {'__name__': self.editor_id})
+                state = 1
+            except Exception as e:
+                traceback.print_exc(file=sys.stderr)
+                state = 0
+            print(f'<completed in {(time.perf_counter() - t0)*1000:.2f} ms>')
+            return state
+
+        def clear_console(self, ev=None):
+            doc[self.console_id].value = ""
+
+        def clear_container(self, ev=None):
+            doc[self.container_id].clear()
+
+    Ace = Editor("kw_editor1", "kw_console1", "brython_div1", "kw_py_src1")
+
+    current_code = Ace.editor.getValue().strip()
+    if not current_code or current_code.startswith('# Brython 機器人程式') or len(current_code) < 50:
+        default_code = '''# Brython 機器人程式
+# 範例：移動機器人
+# from robot_lib import World, AnimatedRobot
+#
+# w = World(10, 10)
+# robot = AnimatedRobot(w, 5, 5)
+# robot.move(3)
+'''
+        Ace.editor.setValue(default_code)
+
+    Ace.editor.gotoLine(1)
+
+    def run_code(ev):
+        doc['kw_console1'].value = "執行中...\n"
+        Ace.clear_container()
+        Ace.run()
+
+    doc['clear_bd1'].bind('click', Ace.clear_container)
+    doc['kw_clear_console1'].bind('click', Ace.clear_console)
+    doc['kw_run1'].bind('click', run_code)
+
+    examples = {
+        'example1': 
+    '''print("Hello Brython!")
+print("這是範例一")
+print(1+2+3)''',
+        'example2': 
+    '''from robot_lib import World, AnimatedRobot
+
+w = World(10, 10)
+r = AnimatedRobot(w, 5, 5)
+for _ in range(4):
+    r.move(3)
+    r.turn_left()''',
+        'example3': 
+    '''from robot_lib import World, AnimatedRobot
+import random
+
+def turn_right(r):
+    for _ in range(3): 
+        r.turn_left()
+
+w = World(10, 10)
+r = AnimatedRobot(w, 1, 1)
+for _ in range(50):
+    r.move(1)
+    if random.random() > 0.7:
+        r.turn_left()
+    elif random.random() > 0.4:
+        turn_right(r)'''
+    }
+    for eid, code in examples.items():
+        def load_example(ev, c=code):
+            Ace.editor.setValue(c)
+            Ace.editor.gotoLine(1)
+        doc[eid].bind('click', load_example)
+    </script>
+
+    <script type="text/javascript">
+    function save_code_to_db() {
+        const console = document.getElementById('kw_console1');
+        const description = document.getElementById('program_desc').value.trim();
+        const code = ace.edit("kw_editor1").getValue().trim();
+        if (!code) {
+            console.value += "錯誤：程式碼不能為空。\n";
+            return;
+        }
+        console.value += "正在儲存程式與說明...\n";
+        fetch('/save_program', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                brython_code: code,
+                desp: description || null
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.message) {
+                console.value += data.message + "\n";
+                if (data.desp) console.value += "儲存的說明: " + data.desp + "\n";
+                const btn = document.getElementById('kw_save_db');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '已儲存';
+                setTimeout(() => btn.innerHTML = originalText, 2000);
+            }
+        })
+        .catch(err => {
+            console.value += "儲存失敗: " + err.message + "\n";
+        });
+    }
+
+    function doSave(storage_id, input_id) {
+        const code = localStorage[storage_id] || '';
+        const blob = new Blob([code], {type: "text/plain;charset=utf-8"});
+        const name = document.getElementById(input_id).value.trim() || 'robot';
+        saveAs(blob, name + ".py");
+    }
+
+    setInterval(() => {
+        const editor = ace.edit("kw_editor1");
+        localStorage["kw_py_src1"] = editor.getValue();
+    }, 1000);
+
+    const saveBtn = document.getElementById('kw_save_db');
+    if(saveBtn) saveBtn.addEventListener('click', save_code_to_db);
+
+    document.getElementById('search_toggle').onclick = () => {
+        const p = document.getElementById('search_panel');
+        p.style.display = p.style.display === 'none' ? 'block' : 'none';
+        if (p.style.display === 'block') document.getElementById('search_query').focus();
+    };
+    document.getElementById('search_close').onclick = () => {
+        document.getElementById('search_panel').style.display = 'none';
+    };
+
+    document.getElementById('search_form').onsubmit = e => {
+        e.preventDefault();
+        const q = document.getElementById('search_query').value.trim();
+        performSearch(q, 1);
+    };
+
+    function performSearch(q, page = 1) {
+        const div = document.getElementById('search_results');
+        div.innerHTML = '<p style="color:#666; text-align:center;">搜尋中...</p>';
+        fetch(`/search_programs?q=${encodeURIComponent(q)}&page=${page}`)
+            .then(r => r.json())
+            .then(data => {
+                if (!data.programs.length) {
+                    div.innerHTML = '<p style="color:#999; text-align:center;">查無結果</p>';
+                    return;
+                }
+                let html = `<div style="display:flex; flex-direction:column; gap:8px;">`;
+                data.programs.forEach(p => {
+                    html += `
+                    <div style="border:1px solid #eee; padding:10px; border-radius:6px; background:#f9fafb;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                            <strong style="color:#2563eb;">${p.account}</strong>
+                            <span style="font-size:0.8rem; color:#999;">${p.time}</span>
+                        </div>
+                        <div style="font-size:0.9rem; color:#4b5563; margin-bottom:5px;">${p.desp || '(無說明)'}</div>
+                        <div style="text-align:right;">
+                            <a href="/brython_test?load=${p.id}" class="btn-primary btn-sm" style="text-decoration:none;">載入</a>
+                        </div>
+                    </div>`;
+                });
+                html += `</div>`;
+                
+                if(data.total_pages > 1) {
+                    html += `<div style="margin-top:10px; display:flex; justify-content:center; gap:5px;">`;
+                    if(data.has_prev) html += `<button onclick="performSearch('${q}',${data.page-1})" class="btn-outline btn-sm">上一頁</button>`;
+                    html += `<span style="font-size:0.9rem; align-self:center;">${data.page} / ${data.total_pages}</span>`;
+                    if(data.has_next) html += `<button onclick="performSearch('${q}',${data.page+1})" class="btn-outline btn-sm">下一頁</button>`;
+                    html += `</div>`;
+                }
+                div.innerHTML = html;
+            })
+            .catch(err => {
+                div.innerHTML = `<p style="color:red;">載入失敗：${err.message}</p>`;
+            });
+    }
+
+    function autoLoadProgram(loadId) {
+        const status = document.createElement('div');
+        status.id = 'auto-load-status';
+        status.innerHTML = '載入程式碼中...';
+        status.style.cssText = 'position:fixed; bottom:20px; right:20px; background:#2563eb; color:white; padding:10px 20px; border-radius:30px; z-index:9999; box-shadow:0 4px 12px rgba(0,0,0,0.2); font-weight:500; animation: slideIn 0.3s;';
+        document.body.appendChild(status);
+
+        fetch(`/api/program/${loadId}`, { credentials: 'include' })
+        .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+        .then(data => {
+            if (data.error) throw new Error(data.error);
+            waitForAceEditor(editor => {
+                editor.setValue(data.brython || '', -1);
+                editor.gotoLine(1);
+                const desc = document.getElementById('program_desc');
+                if (desc) desc.value = data.desp || '';
+                status.innerHTML = '程式碼已載入';
+                status.style.background = '#10b981';
+                history.replaceState(null, '', window.location.pathname);
+            }, status);
+        })
+        .catch(err => {
+            status.innerHTML = `載入失敗：${err.message}`;
+            status.style.background = '#dc2626';
+        })
+        .finally(() => { setTimeout(() => document.getElementById('auto-load-status')?.remove(), 3000); });
+    }
+
+    function waitForAceEditor(callback, status, attempts = 100) {
+        if (attempts === 0) return;
+        try {
+            const editor = window.ace && window.ace.edit("kw_editor1");
+            if (editor && typeof editor.getValue === 'function') callback(editor);
+            else setTimeout(() => waitForAceEditor(callback, status, attempts - 1), 100);
+        } catch (e) { setTimeout(() => waitForAceEditor(callback, status, attempts - 1), 100); }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof brython === 'function') brython();
+        const loadId = new URLSearchParams(window.location.search).get('load');
+        if (loadId) autoLoadProgram(loadId);
+    });
+    </script>
+
+</body>
+</html>

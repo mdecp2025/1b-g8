@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>斷網小恐龍 (史詩畫質版) - RobotPlatform</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --bg-color: #f0f9ff; /* 天空藍淡色 */
+            --text-main: #334155;
+        }
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+        
+        header {
+            width: 100%;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 1rem 0;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            position: relative;
+            z-index: 10;
+            backdrop-filter: blur(5px);
+        }
+        .back-btn {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            text-decoration: none;
+            color: var(--primary-color);
+            font-weight: bold;
+            border: 1px solid var(--primary-color);
+            padding: 5px 15px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        .back-btn:hover { background: #eff6ff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+
+        .game-container {
+            margin-top: 5vh;
+            text-align: center;
+            position: relative;
+        }
+        
+        /* 畫布外框美化 */
+        canvas {
+            background: linear-gradient(to bottom, #87CEEB 0%, #E0F6FF 100%); /* 藍天漸層 */
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            max-width: 100%;
+        }
+
+        .score-board {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 1.4rem;
+            font-weight: 800;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            width: 800px;
+            margin: 0 auto 10px auto;
+            max-width: 90vw;
+            text-shadow: 1px 1px 0 #fff;
+        }
+
+        .controls-hint {
+            margin-top: 20px;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+
+        #game-over {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            border: 2px solid #334155;
+        }
+        #game-over h2 {
+            margin: 0 0 10px 0;
+            color: #ef4444;
+            font-size: 2rem;
+            text-transform: uppercase;
+        }
+        .restart-icon {
+            font-size: 3rem;
+            cursor: pointer;
+            transition: transform 0.2s;
+            display: inline-block;
+        }
+        .restart-icon:hover { transform: rotate(180deg) scale(1.1); }
+        
+        #power-bar-container {
+            width: 100%;
+            height: 8px;
+            background: rgba(0,0,0,0.1);
+            margin-top: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            display: none; 
+        }
+        #power-bar {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #f59e0b, #ef4444);
+            box-shadow: 0 0 10px #f59e0b;
+            transition: width 0.1s linear;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <a href="/" class="back-btn">← 回首頁</a>
+        <h2 style="margin:0;">🦖 斷網小恐龍 <span style="font-size:0.6em; background:#ef4444; color:white; padding:2px 8px; border-radius:10px; vertical-align:middle;">史詩版</span></h2>
+    </header>
+
+    <div class="game-container">
+        <div class="score-board">
+            <span style="color:#64748b">HI <span id="high-score">00000</span></span>
+            <span id="current-score" style="color:#334155">00000</span>
+        </div>
+        
+        <div style="position: relative; width: 800px; max-width: 100%; margin: 0 auto;">
+            <canvas id="gameCanvas" width="800" height="300"></canvas>
+            
+            <div id="game-over">
+                <h2>Game Over</h2>
+                <div class="restart-icon" onclick="resetGame()">↻</div>
+            </div>
+            
+            <div id="power-bar-container">
+                <div id="power-bar"></div>
+            </div>
+        </div>
+
+        <div class="controls-hint">
+            [電腦] 空白鍵或 ↑ 跳躍<br>
+            [手機] 點擊畫面跳躍<br>
+            <span style="color:#ef4444; font-weight:bold;">★ 吃到星星開啟末日推土機模式！</span>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('current-score');
+        const highScoreEl = document.getElementById('high-score');
+        const gameOverEl = document.getElementById('game-over');
+        const powerBarContainer = document.getElementById('power-bar-container');
+        const powerBar = document.getElementById('power-bar');
+
+        let gameSpeed = 5;
+        let score = 0;
+        let isGameOver = false;
+        let animationId;
+        let frame = 0;
+        
+        // 畫面震動變數
+        let shakeDuration = 0;
+        
+        let highScore = localStorage.getItem('dinoHighScore') || 0;
+        highScoreEl.innerText = pad(highScore, 5);
+
+        // --- 遊戲物件 ---
+        let clouds = []; // 雲朵
+        let stars = [];
+        let particles = []; 
+        let meteors = []; 
+        let obstacles = [];
+
+        // 無敵設定
+        let isInvincible = false;
+        let invincibleTimer = 0;
+        const INVINCIBLE_DURATION = 900; // 15秒
+        const BUFFER_TIME = 300; 
+
+        // 地面高度
+        const GROUND_Y = 250;
+
+        const dino = {
+            x: 50,
+            y: GROUND_Y - 44, // 調整以符合繪圖高度
+            w: 44,
+            h: 44,
+            dy: 0,
+            jumpPower: -12, 
+            gravity: 0.5,  
+            grounded: true,
+            legFrame: 0 // 跑步動畫幀
+        };
+
+        function pad(n, width) {
+            n = n + '';
+            return n.length >= width ? n : new Array(width - n.length + 1).join('0') + n;
+        }
+
+        // --- 繪圖函數區 (讓畫面精緻的關鍵) ---
+
+        // 畫雲朵
+        function drawCloud(x, y, scale) {
+            ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+            ctx.beginPath();
+            ctx.arc(x, y, 20 * scale, 0, Math.PI * 2);
+            ctx.arc(x + 15 * scale, y - 10 * scale, 25 * scale, 0, Math.PI * 2);
+            ctx.arc(x + 35 * scale, y, 20 * scale, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // 畫精緻恐龍 (非方塊)
+        function drawDinoSprite(x, y, w, h, color, isRun) {
+            ctx.fillStyle = color;
+            
+            // 身體 (橢圓+矩形)
+            ctx.beginPath();
+            ctx.ellipse(x + w/2, y + h/2 + 5, w/2 - 5, h/3, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 頭部
+            ctx.fillRect(x + w/2, y, w/2, h/2.5);
+            // 鼻子凸起
+            ctx.fillRect(x + w - 5, y, 5, h/4);
+
+            // 尾巴
+            ctx.beginPath();
+            ctx.moveTo(x + 10, y + h/2);
+            ctx.lineTo(x - 5, y + h/2 + 5);
+            ctx.lineTo(x + 10, y + h - 10);
+            ctx.fill();
+
+            // 眼睛 (白色底 + 黑色珠子)
+            ctx.fillStyle = "white";
+            ctx.fillRect(x + w/1.5, y + 5, 8, 8);
+            ctx.fillStyle = "black";
+            ctx.fillRect(x + w/1.5 + 4, y + 7, 3, 3);
+
+            // 嘴巴
+            ctx.fillStyle = color;
+            ctx.fillRect(x + w/1.5, y + 22, 12, 4);
+
+            // 腳 (跑步動畫)
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            
+            if (!dino.grounded) {
+                // 跳躍姿勢
+                ctx.moveTo(x + w/2 - 5, y + h - 5);
+                ctx.lineTo(x + w/2 - 5, y + h + 5); // 後腳縮
+                ctx.moveTo(x + w/2 + 5, y + h - 5);
+                ctx.lineTo(x + w/2 + 10, y + h + 8); // 前腳伸
+            } else {
+                // 跑步姿勢 (切換)
+                if (Math.floor(frame / 6) % 2 === 0) {
+                    ctx.moveTo(x + w/2 - 5, y + h - 5);
+                    ctx.lineTo(x + w/2 - 5, y + h + 10); // 左腳下
+                    ctx.moveTo(x + w/2 + 5, y + h - 5);
+                    ctx.lineTo(x + w/2 + 10, y + h); // 右腳上
+                } else {
+                    ctx.moveTo(x + w/2 - 5, y + h - 5);
+                    ctx.lineTo(x + w/2 - 10, y + h); // 左腳上
+                    ctx.moveTo(x + w/2 + 5, y + h - 5);
+                    ctx.lineTo(x + w/2 + 5, y + h + 10); // 右腳下
+                }
+            }
+            ctx.stroke();
+            
+            // 無敵光環 (如果是無敵狀態)
+            if (isInvincible) {
+                ctx.strokeStyle = "#fcd34d"; // 金色光邊
+                ctx.lineWidth = 2;
+                ctx.strokeRect(x-2, y-2, w+4, h+14);
+            }
+        }
+
+        // 畫精緻仙人掌
+        function drawCactusSprite(obs) {
+            ctx.fillStyle = "#15803d"; // 深綠色
+            
+            // 主幹
+            let stemW = obs.w * 0.6;
+            let stemX = obs.x + (obs.w - stemW) / 2;
+            
+            // 圓頂
+            ctx.beginPath();
+            ctx.arc(stemX + stemW/2, obs.y, stemW/2, Math.PI, 0);
+            ctx.fill();
+            
+            // 身體
+            ctx.fillRect(stemX, obs.y, stemW, obs.h);
+            
+            // 分支 (如果有高度夠高)
+            if (obs.h > 40) {
+                // 左分支
+                ctx.beginPath();
+                ctx.moveTo(stemX, obs.y + 15);
+                ctx.quadraticCurveTo(stemX - 10, obs.y + 15, stemX - 10, obs.y + 5);
+                ctx.lineTo(stemX, obs.y + 15);
+                ctx.fill();
+                
+                // 右分支
+                ctx.beginPath();
+                ctx.moveTo(stemX + stemW, obs.y + 10);
+                ctx.quadraticCurveTo(stemX + stemW + 12, obs.y + 10, stemX + stemW + 12, obs.y - 5);
+                ctx.lineTo(stemX + stemW, obs.y + 10);
+                ctx.fill();
+            }
+
+            // 刺 (裝飾)
+            ctx.fillStyle = "#a3e635"; // 淺綠色刺
+            ctx.fillRect(stemX + 2, obs.y + 10, 2, 2);
+            ctx.fillRect(stemX + stemW - 4, obs.y + 25, 2, 2);
+            ctx.fillRect(stemX + 5, obs.y + 35, 2, 2);
+        }
+
+        // 畫立體星星
+        function drawStar(cx, cy, spikes, outerRadius, innerRadius) {
+            // 旋轉動畫
+            let rot = Math.PI / 2 * 3 + (frame * 0.05); 
+            let x = cx;
+            let y = cy;
+            let step = Math.PI / spikes;
+
+            ctx.beginPath();
+            ctx.moveTo(cx, cy - outerRadius);
+            for (i = 0; i < spikes; i++) {
+                x = cx + Math.cos(rot) * outerRadius;
+                y = cy + Math.sin(rot) * outerRadius;
+                ctx.lineTo(x, y);
+                rot += step;
+
+                x = cx + Math.cos(rot) * innerRadius;
+                y = cy + Math.sin(rot) * innerRadius;
+                ctx.lineTo(x, y);
+                rot += step;
+            }
+            ctx.lineTo(cx, cy - outerRadius);
+            ctx.closePath();
+            
+            // 漸層填充
+            let grd = ctx.createRadialGradient(cx, cy, innerRadius, cx, cy, outerRadius);
+            grd.addColorStop(0, "#fef3c7");
+            grd.addColorStop(1, "#f59e0b");
+            ctx.fillStyle = grd;
+            ctx.fill();
+            
+            ctx.strokeStyle = "#fff";
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            
+            // 光暈
+            ctx.shadowColor = "#fbbf24";
+            ctx.shadowBlur = 15;
+            ctx.stroke();
+            ctx.shadowBlur = 0; 
+        }
+
+        // 畫隕石 (火球)
+        function drawMeteor(m) {
+            // 尾巴 (多層次)
+            let grad = ctx.createLinearGradient(m.x, m.y, m.x + 40, m.y - 40);
+            grad.addColorStop(0, "rgba(255, 69, 0, 1)");
+            grad.addColorStop(1, "rgba(255, 69, 0, 0)");
+            
+            ctx.beginPath();
+            ctx.moveTo(m.x, m.y);
+            ctx.lineTo(m.x + m.r, m.y - m.r);
+            ctx.lineTo(m.x + 40, m.y - 40);
+            ctx.lineTo(m.x - m.r, m.y + m.r);
+            ctx.fillStyle = grad;
+            ctx.fill();
+
+            // 核心
+            ctx.beginPath();
+            ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
+            ctx.fillStyle = '#ea580c'; 
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(m.x - 2, m.y - 2, m.r * 0.6, 0, Math.PI * 2);
+            ctx.fillStyle = '#fbbf24'; 
+            ctx.fill();
+        }
+
+        // 畫地面
+        function drawGround() {
+            ctx.beginPath();
+            ctx.moveTo(0, GROUND_Y);
+            ctx.lineTo(canvas.width, GROUND_Y);
+            ctx.strokeStyle = "#94a3b8";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // 地面紋理 (移動)
+            ctx.fillStyle = "#cbd5e1";
+            let offset = (frame * gameSpeed) % 50;
+            for(let i=0; i<canvas.width + 50; i+=50) {
+                if (i % 100 === 0) ctx.fillRect(i - offset, GROUND_Y + 5, 10, 3);
+                else ctx.fillRect(i - offset + 20, GROUND_Y + 12, 6, 3);
+            }
+        }
+
+        // 震動畫面
+        function screenShake() {
+            if (shakeDuration > 0) {
+                let dx = (Math.random() - 0.5) * 10;
+                let dy = (Math.random() - 0.5) * 10;
+                ctx.translate(dx, dy);
+                shakeDuration--;
+            }
+        }
+
+        // 爆炸特效
+        function createExplosion(x, y, color='#535353') {
+            shakeDuration = 5; // 觸發震動
+            for (let i = 0; i < 20; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 15, 
+                    vy: (Math.random() - 0.5) * 15,
+                    life: 40, 
+                    color: color,
+                    size: Math.random() * 5 + 2
+                });
+            }
+        }
+
+        function update() {
+            if (isGameOver) return;
+
+            animationId = requestAnimationFrame(update);
+            ctx.save(); // 儲存畫布狀態 (為了震動復原)
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            frame++;
+
+            // 應用震動
+            screenShake();
+
+            // --- 0. 背景層 ---
+            // 生成雲
+            if (Math.random() < 0.005) {
+                clouds.push({x: canvas.width, y: Math.random() * 100 + 20, scale: Math.random() * 0.5 + 0.5});
+            }
+            // 畫雲
+            for (let i = clouds.length - 1; i >= 0; i--) {
+                let c = clouds[i];
+                c.x -= gameSpeed * 0.2; // 雲動得慢
+                drawCloud(c.x, c.y, c.scale);
+                if (c.x < -100) clouds.splice(i, 1);
+            }
+
+            drawGround();
+
+            // --- 1. 無敵計時 ---
+            if (isInvincible) {
+                invincibleTimer--;
+                let percent = (invincibleTimer / INVINCIBLE_DURATION) * 100;
+                powerBar.style.width = percent + '%';
+
+                if (invincibleTimer > BUFFER_TIME) {
+                    if (frame % 5 === 0) {
+                        meteors.push({
+                            x: Math.random() * canvas.width + 100, 
+                            y: -50,
+                            vx: -6 - Math.random() * 5, 
+                            vy: 8 + Math.random() * 5,  
+                            r: 5 + Math.random() * 8   
+                        });
+                    }
+                }
+                if (invincibleTimer <= 0) {
+                    isInvincible = false;
+                    powerBarContainer.style.display = 'none';
+                    meteors = [];
+                }
+            }
+
+            // --- 2. 恐龍物理 ---
+            if (!dino.grounded) {
+                dino.dy += dino.gravity;
+                dino.y += dino.dy;
+            }
+
+            // 地面碰撞
+            if (dino.y >= GROUND_Y - dino.h) {
+                dino.y = GROUND_Y - dino.h;
+                dino.dy = 0;
+                dino.grounded = true;
+            }
+
+            // 決定恐龍顏色與閃爍
+            let dinoColor = '#334155'; // 預設深灰
+            if (isInvincible) {
+                if (invincibleTimer < BUFFER_TIME && Math.floor(frame / 5) % 2 === 0) {
+                    ctx.globalAlpha = 0.5;
+                }
+                dinoColor = '#ef4444'; // 無敵紅
+            }
+            
+            drawDinoSprite(dino.x, dino.y, dino.w, dino.h, dinoColor);
+            ctx.globalAlpha = 1.0; // 恢復透明度
+
+            // --- 3. 隕石更新 ---
+            for (let i = meteors.length - 1; i >= 0; i--) {
+                let m = meteors[i];
+                m.x += m.vx;
+                m.y += m.vy;
+                drawMeteor(m);
+
+                if (m.y > GROUND_Y) {
+                    createExplosion(m.x, GROUND_Y, '#f97316');
+                    meteors.splice(i, 1);
+                    continue;
+                }
+
+                for (let j = obstacles.length - 1; j >= 0; j--) {
+                    let obs = obstacles[j];
+                    let dist = Math.hypot(m.x - (obs.x + obs.w/2), m.y - (obs.y + obs.h/2));
+                    if (dist < 40) {
+                        createExplosion(obs.x + obs.w/2, obs.y + obs.h/2, '#15803d');
+                        obstacles.splice(j, 1);
+                        meteors.splice(i, 1);
+                        score += 30;
+                        break;
+                    }
+                }
+            }
+
+            // --- 4. 粒子效果 ---
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life--;
+                ctx.globalAlpha = p.life / 40;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size || 3, 0, Math.PI*2);
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+
+            // --- 5. 星星生成 ---
+            if (Math.random() < 0.005 && stars.length < 1 && !isInvincible) {
+                stars.push({
+                    x: canvas.width,
+                    y: GROUND_Y - 80 - Math.random() * 60, // 高度浮動
+                    r: 15 
+                });
+            }
+
+            for (let i = stars.length - 1; i >= 0; i--) {
+                let star = stars[i];
+                star.x -= gameSpeed;
+                drawStar(star.x, star.y, 5, 15, 7);
+
+                // 吃星星碰撞
+                if (
+                    dino.x < star.x + 15 &&
+                    dino.x + dino.w > star.x - 15 &&
+                    dino.y < star.y + 15 &&
+                    dino.y + dino.h > star.y - 15
+                ) {
+                    isInvincible = true;
+                    invincibleTimer = INVINCIBLE_DURATION;
+                    powerBarContainer.style.display = 'block';
+                    stars.splice(i, 1);
+                    score += 100; 
+                    // 吃到特效
+                    createExplosion(dino.x + dino.w/2, dino.y, '#fbbf24');
+                }
+
+                if (star.x < -20) stars.splice(i, 1);
+            }
+
+            // --- 6. 障礙物生成 ---
+            let minGap = 400 + (Math.random() * 200); 
+            let spawnChance = 0.02;
+
+            if (isInvincible && invincibleTimer > BUFFER_TIME) {
+                minGap = 20; // 絕對牆壁
+                spawnChance = 1.0;
+            }
+
+            let lastObs = obstacles[obstacles.length - 1];
+            
+            if (!lastObs || (canvas.width - lastObs.x > minGap)) {
+                if (Math.random() < spawnChance) { 
+                    let height = Math.random() > 0.6 ? 40 : 60; 
+                    obstacles.push({
+                        x: canvas.width,
+                        y: GROUND_Y - height,
+                        w: 24, // 仙人掌稍微寬一點
+                        h: height
+                    });
+                }
+            }
+
+            // --- 7. 移動與碰撞 ---
+            for (let i = 0; i < obstacles.length; i++) {
+                let obs = obstacles[i];
+                obs.x -= gameSpeed;
+                drawCactusSprite(obs);
+
+                // 碰撞判定 (hitbox 微縮)
+                if (
+                    dino.x + 10 < obs.x + obs.w &&
+                    dino.x + dino.w - 10 > obs.x &&
+                    dino.y + 10 < obs.y + obs.h &&
+                    dino.y + dino.h > obs.y
+                ) {
+                    if (isInvincible) {
+                        createExplosion(obs.x + obs.w/2, obs.y + obs.h/2, '#15803d');
+                        obstacles.splice(i, 1); 
+                        i--; 
+                        score += 20; 
+                        scoreEl.innerText = pad(score, 5);
+                    } else {
+                        gameOver();
+                    }
+                }
+
+                if (obs && obs.x + obs.w < 0) {
+                    obstacles.shift();
+                    i--;
+                    score++;
+                    scoreEl.innerText = pad(score, 5);
+                    if(score % 5 === 0 && gameSpeed < 13) gameSpeed += 0.2;
+                }
+            }
+            
+            ctx.restore(); // 恢復畫布狀態
+        }
+
+        function jump() {
+            if (dino.grounded && !isGameOver) {
+                dino.dy = dino.jumpPower;
+                dino.grounded = false;
+            } else if (isGameOver) {
+                resetGame();
+            }
+        }
+
+        function gameOver() {
+            isGameOver = true;
+            gameOverEl.style.display = 'block';
+            cancelAnimationFrame(animationId);
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('dinoHighScore', highScore);
+                highScoreEl.innerText = pad(highScore, 5);
+            }
+        }
+
+        function resetGame() {
+            isGameOver = false;
+            isInvincible = false;
+            invincibleTimer = 0;
+            powerBarContainer.style.display = 'none';
+            gameOverEl.style.display = 'none';
+            
+            score = 0;
+            scoreEl.innerText = pad(0, 5);
+            gameSpeed = 5;
+            obstacles = [];
+            stars = [];
+            particles = [];
+            meteors = [];
+            clouds = [];
+            
+            dino.y = GROUND_Y - dino.h;
+            dino.dy = 0;
+            
+            update();
+        }
+
+        window.addEventListener('keydown', function (e) {
+            if (e.code === 'Space' || e.code === 'ArrowUp') {
+                e.preventDefault();
+                jump();
+            }
+        });
+
+        canvas.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            jump();
+        });
+        
+        document.querySelector('.restart-icon').addEventListener('click', function(e){
+            e.stopPropagation();
+            resetGame();
+        });
+
+        update();
+    </script>
+</body>
+</html>

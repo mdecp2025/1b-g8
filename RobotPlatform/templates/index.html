@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+    <title>機器人程式測試平台</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg-color: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-main: #1f2937;
+            --text-sub: #6b7280;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header {
+            background-color: var(--card-bg);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .brand {
+            font-weight: bold;
+            font-size: 1.2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--text-sub);
+            margin-left: 1.5rem;
+            font-size: 0.95rem;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary-color);
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 3rem auto;
+            padding: 0 1rem;
+            text-align: center;
+        }
+
+        h2 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-main);
+        }
+
+        .subtitle {
+            color: var(--text-sub);
+            margin-bottom: 3rem;
+        }
+
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 2rem;
+            text-decoration: none;
+            color: var(--text-main);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 1px solid transparent;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border-color: var(--primary-color);
+        }
+
+        .card h3 {
+            margin: 0;
+            font-size: 1.25rem;
+            color: var(--primary-color);
+        }
+
+        .card p {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            margin-top: 0.5rem;
+        }
+
+        .btn-primary {
+            display: inline-block;
+            background-color: var(--primary-color);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <a href="#" class="brand">RobotPlatform</a>
+        <nav class="nav-links">
+            <a href="{{ url_for('login') }}">登入</a>
+            <a href="{{ url_for('register') }}" class="btn-primary">註冊新帳號</a>
+            <a href="{{ url_for('logout') }}">登出</a>
+        </nav>
+    </header>
+
+    <main class="container">
+        <h2>歡迎來到機器人程式測試平台</h2>
+        <p class="subtitle">請選擇下方功能開始您的專案測試與開發</p>
+
+        <div class="action-grid">
+            <a href="{{ url_for('brython_test') }}" class="card">
+                <h3>進行 Brython 測試</h3>
+                <p>線上撰寫並執行機器人控制邏輯</p>
+            </a>
+
+            <a href="{{ url_for('programs') }}" class="card">
+                <h3>檢視程式碼庫</h3>
+                <p>管理與查看您已儲存的所有專案</p>
+            </a>
+
+            <a href="https://gemini.google.com/" target="_blank" class="card">
+                <h3>Gemini AI 助手</h3>
+                <p>前往 Gemini 尋求程式開發協助</p>
+            </a>
+
+            <a href="https://www.google.com/" target="_blank" class="card">
+                <h3>Google 搜尋</h3>
+                <p>查詢程式語法或解決方案</p>
+            </a>
+
+            <a href="{{ url_for('stress_relief') }}" class="card" style="border-color: #535353;">
+                <h3 style="color: #535353;">🦖 斷網小恐龍</h3>
+                <p>沒有網路？沒關係！按下空白鍵開始奔跑吧。</p>
+            </a>
+        </div>
+    </main>
+
+</body>
+</html>
